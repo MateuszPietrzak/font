@@ -1,8 +1,43 @@
 use wasm_bindgen::prelude::*;
+use wgpu::{util::DeviceExt};
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct Vertex {
+    position: [f32; 2],
+}
+
+const VERTICES: &[Vertex] = &[
+    Vertex {
+        position: [0.0, 0.5],
+    },
+    Vertex {
+        position: [-0.5, -0.5],
+    },
+    Vertex {
+        position: [0.5, -0.5],
+    },
+];
+
+impl Vertex {
+    const ATTRIBS: [wgpu::VertexAttribute; 1] =
+        wgpu::vertex_attr_array![0 => Float32x2];
+
+    fn desc() -> wgpu::VertexBufferLayout<'static> {
+        use std::mem;
+
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &Self::ATTRIBS,
+        }
+    }
+}
 
 #[wasm_bindgen(start)]
 async fn start() {
     console_error_panic_hook::set_once();
+    console_log::init_with_level(log::Level::Debug);
 
     let window = web_sys::window().unwrap_throw();
     let document = window.document().unwrap_throw();
@@ -14,6 +49,8 @@ async fn start() {
 
     let canvas_width = canvas.width();
     let canvas_height = canvas.height();
+
+    log::error!("Dimensions: {} {}", canvas_width, canvas_height);
 
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends: wgpu::Backends::GL,
@@ -69,7 +106,7 @@ async fn start() {
         vertex: wgpu::VertexState {
             module: &shader,
             entry_point: Some("vs_main"),
-            buffers: &[],
+            buffers: &[Vertex::desc()],
             compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
@@ -100,6 +137,13 @@ async fn start() {
         multiview_mask: None,
         cache: None,
     });
+
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Vertex Buffer"),
+        contents: bytemuck::cast_slice(VERTICES),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+
 
     let output = surface.get_current_texture().unwrap();
 
@@ -134,7 +178,8 @@ async fn start() {
     });
 
     render_pass.set_pipeline(&render_pipeline);
-    render_pass.draw(0..3, 0..1);
+    render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+    render_pass.draw(0..(VERTICES.len() as u32), 0..1);
 
     drop(render_pass);
 
