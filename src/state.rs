@@ -172,6 +172,15 @@ impl AppState {
     }
 
     #[wasm_bindgen]
+    pub fn resize(&mut self, new_width: u32, new_height: u32) {
+        if new_width > 0 && new_height > 0 {
+            self.config.width = new_width;
+            self.config.height = new_height;
+            self.surface.configure(&self.device, &self.config);            
+        }
+    }
+
+    #[wasm_bindgen]
     pub fn render(&self) {
         let output = self.surface.get_current_texture().unwrap();
 
