@@ -9,13 +9,22 @@ struct Vertex {
 
 const VERTICES: &[Vertex] = &[
     Vertex {
-        position: [0.0, 0.5],
+        position: [-1.0, 1.0],
     },
     Vertex {
-        position: [-0.5, -0.5],
+        position: [1.0, 1.0],
     },
     Vertex {
-        position: [0.5, -0.5],
+        position: [-1.0, -1.0],
+    },
+    Vertex {
+        position: [-1.0, -1.0],
+    },
+    Vertex {
+        position: [1.0, 1.0],
+    },
+    Vertex {
+        position: [1.0, -1.0],
     },
 ];
 
@@ -37,7 +46,7 @@ impl Vertex {
 #[wasm_bindgen(start)]
 async fn start() {
     console_error_panic_hook::set_once();
-    console_log::init_with_level(log::Level::Debug);
+    let _ = console_log::init_with_level(log::Level::Debug);
 
     let window = web_sys::window().unwrap_throw();
     let document = window.document().unwrap_throw();
@@ -122,8 +131,8 @@ async fn start() {
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: Some(wgpu::Face::Back),
+            front_face: wgpu::FrontFace::Cw,
+            cull_mode: None,
             polygon_mode: wgpu::PolygonMode::Fill,
             unclipped_depth: false,
             conservative: false,
