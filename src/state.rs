@@ -1,5 +1,6 @@
 use wasm_bindgen::prelude::*;
-use wgpu::{VertexStepMode::Instance, util::DeviceExt};
+use wgpu::util::DeviceExt;
+extern crate nalgebra_glm as glm;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -37,11 +38,22 @@ struct InstanceInput {
     matrix_col_0: [f32; 2],
     matrix_col_1: [f32; 2],
     matrix_col_2: [f32; 2],
+    p0: [f32; 2],
+    p1: [f32; 2],
+    p2: [f32; 2],
+    p3: [f32; 2],
 }
 
 impl InstanceInput {
-    const ATTRIBS: [wgpu::VertexAttribute; 3] =
-        wgpu::vertex_attr_array![1 => Float32x2, 2 => Float32x2, 3 => Float32x2];
+    const ATTRIBS: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![
+        1 => Float32x2,
+        2 => Float32x2,
+        3 => Float32x2,
+        4 => Float32x2,
+        5 => Float32x2,
+        6 => Float32x2,
+        7 => Float32x2,
+    ];
 
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         use std::mem;
@@ -54,23 +66,28 @@ impl InstanceInput {
     }
 }
 
-const INSTANCES: &[InstanceInput] = &[
+fn points_to_instance_input(points: [glm::Vec2; 4]) -> InstanceInput {
+    let min_x: f32 = points.iter().map(|p| p.x).reduce(f32::min).unwrap_or(-1.0);
+    let min_y: f32 = points.iter().map(|p| p.y).reduce(f32::min).unwrap_or(-1.0);
+    let max_x: f32 = points.iter().map(|p| p.x).reduce(f32::max).unwrap_or(1.0);
+    let max_y: f32 = points.iter().map(|p| p.y).reduce(f32::max).unwrap_or(1.0);
+
+    let mid_x = (max_x + min_x) / 2.0;
+    let mid_y = (max_y + min_y) / 2.0;
+
+    let width = max_x - min_x;
+    let height = max_y - min_y;
+
     InstanceInput {
-        matrix_col_0: [0.2, 0.0],
-        matrix_col_1: [0.0, 0.2],
-        matrix_col_2: [-0.7, -0.7],
-    },
-    InstanceInput {
-        matrix_col_0: [0.2, 0.0],
-        matrix_col_1: [0.0, 0.2],
-        matrix_col_2: [0.0, 0.0],
-    },
-    InstanceInput {
-        matrix_col_0: [0.2, 0.0],
-        matrix_col_1: [0.0, 0.2],
-        matrix_col_2: [0.7, 0.7],
-    },
-];
+        matrix_col_0: [width, 0.0],
+        matrix_col_1: [0.0, height],
+        matrix_col_2: [mid_x * 2.0 - 1.0, -mid_y * 2.0 + 1.0],
+        p0: [points[0].x, points[0].y],
+        p1: [points[1].x, points[1].y],
+        p2: [points[2].x, points[2].y],
+        p3: [points[3].x, points[3].y],
+    }
+}
 
 #[wasm_bindgen]
 pub struct AppState {
@@ -193,9 +210,30 @@ impl AppState {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
+        let instances: &[InstanceInput] = &[
+            points_to_instance_input([
+                glm::Vec2::new(0.5, 0.0),
+                glm::Vec2::new(0.5, 0.0),
+                glm::Vec2::new(0.5, 0.0),
+                glm::Vec2::new(1.0, 0.5),
+            ]),
+            points_to_instance_input([
+                glm::Vec2::new(0.375, 0.5),
+                glm::Vec2::new(0.5, 0.5),
+                glm::Vec2::new(0.5, 0.5),
+                glm::Vec2::new(0.5, 0.625),
+            ]),
+            points_to_instance_input([
+                glm::Vec2::new(0.5, 0.625),
+                glm::Vec2::new(0.5, 0.7),
+                glm::Vec2::new(0.5, 0.7),
+                glm::Vec2::new(0.75, 0.875),
+            ]),
+        ];
+
         let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Instance buffer"),
-            contents: bytemuck::cast_slice(INSTANCES),
+            contents: bytemuck::cast_slice(instances),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
@@ -258,7 +296,7 @@ impl AppState {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-        render_pass.draw(0..(VERTICES.len() as u32), 0..(INSTANCES.len() as u32));
+        render_pass.draw(0..(VERTICES.len() as u32), 0..3);
 
         drop(render_pass);
 
