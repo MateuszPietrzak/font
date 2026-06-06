@@ -1,5 +1,5 @@
 use wasm_bindgen::prelude::*;
-use wgpu::util::DeviceExt;
+use wgpu::{VertexStepMode::Instance, util::DeviceExt};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -7,25 +7,14 @@ struct Vertex {
     position: [f32; 2],
 }
 
+#[rustfmt::skip]
 const VERTICES: &[Vertex] = &[
-    Vertex {
-        position: [-1.0, 1.0],
-    },
-    Vertex {
-        position: [1.0, 1.0],
-    },
-    Vertex {
-        position: [-1.0, -1.0],
-    },
-    Vertex {
-        position: [-1.0, -1.0],
-    },
-    Vertex {
-        position: [1.0, 1.0],
-    },
-    Vertex {
-        position: [1.0, -1.0],
-    },
+    Vertex { position: [-1.0, 1.0] },
+    Vertex { position: [1.0, 1.0] },
+    Vertex { position: [-1.0, -1.0] },
+    Vertex { position: [-1.0, -1.0] },
+    Vertex { position: [1.0, 1.0] },
+    Vertex { position: [1.0, -1.0] },
 ];
 
 impl Vertex {
@@ -42,6 +31,47 @@ impl Vertex {
     }
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct InstanceInput {
+    matrix_col_0: [f32; 2],
+    matrix_col_1: [f32; 2],
+    matrix_col_2: [f32; 2],
+}
+
+impl InstanceInput {
+    const ATTRIBS: [wgpu::VertexAttribute; 3] =
+        wgpu::vertex_attr_array![1 => Float32x2, 2 => Float32x2, 3 => Float32x2];
+
+    fn desc() -> wgpu::VertexBufferLayout<'static> {
+        use std::mem;
+
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &Self::ATTRIBS,
+        }
+    }
+}
+
+const INSTANCES: &[InstanceInput] = &[
+    InstanceInput {
+        matrix_col_0: [0.2, 0.0],
+        matrix_col_1: [0.0, 0.2],
+        matrix_col_2: [-0.7, -0.7],
+    },
+    InstanceInput {
+        matrix_col_0: [0.2, 0.0],
+        matrix_col_1: [0.0, 0.2],
+        matrix_col_2: [0.0, 0.0],
+    },
+    InstanceInput {
+        matrix_col_0: [0.2, 0.0],
+        matrix_col_1: [0.0, 0.2],
+        matrix_col_2: [0.7, 0.7],
+    },
+];
+
 #[wasm_bindgen]
 pub struct AppState {
     surface: wgpu::Surface<'static>,
@@ -50,6 +80,7 @@ pub struct AppState {
     config: wgpu::SurfaceConfiguration,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
+    instance_buffer: wgpu::Buffer,
 }
 
 #[wasm_bindgen]
@@ -124,7 +155,7 @@ impl AppState {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[Vertex::desc()],
+                buffers: &[Vertex::desc(), InstanceInput::desc()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
@@ -161,6 +192,13 @@ impl AppState {
             contents: bytemuck::cast_slice(VERTICES),
             usage: wgpu::BufferUsages::VERTEX,
         });
+
+        let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Instance buffer"),
+            contents: bytemuck::cast_slice(INSTANCES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
         Self {
             surface,
             device,
@@ -168,6 +206,7 @@ impl AppState {
             config,
             render_pipeline,
             vertex_buffer,
+            instance_buffer,
         }
     }
 
@@ -176,7 +215,7 @@ impl AppState {
         if new_width > 0 && new_height > 0 {
             self.config.width = new_width;
             self.config.height = new_height;
-            self.surface.configure(&self.device, &self.config);            
+            self.surface.configure(&self.device, &self.config);
         }
     }
 
@@ -188,9 +227,11 @@ impl AppState {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
 
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
@@ -216,7 +257,8 @@ impl AppState {
 
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.draw(0..(VERTICES.len() as u32), 0..1);
+        render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+        render_pass.draw(0..(VERTICES.len() as u32), 0..(INSTANCES.len() as u32));
 
         drop(render_pass);
 
