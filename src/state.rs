@@ -79,14 +79,21 @@ fn points_to_instance_input(points: [glm::Vec2; 4]) -> InstanceInput {
     let height = max_y - min_y;
 
     InstanceInput {
-        matrix_col_0: [width * 0.5, 0.0],
-        matrix_col_1: [0.0, height * 0.5],
+        matrix_col_0: [width * 0.5 + 0.05, 0.0],
+        matrix_col_1: [0.0, height * 0.5 + 0.05],
         matrix_col_2: [mid_x, mid_y],
         p0: [points[0].x, points[0].y],
         p1: [points[1].x, points[1].y],
         p2: [points[2].x, points[2].y],
         p3: [points[3].x, points[3].y],
     }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct Uniform {
+    dimensions: [f32; 2],
+    _padding: [f32; 2]
 }
 
 #[wasm_bindgen]
@@ -98,6 +105,8 @@ pub struct AppState {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     instance_buffer: wgpu::Buffer,
+    uniform_buffer: wgpu::Buffer,
+    bind_group: wgpu::BindGroup,
 }
 
 #[wasm_bindgen]
@@ -159,10 +168,42 @@ impl AppState {
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
 
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Uniform buffer bind group layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Uniform buffer"),
+            contents: bytemuck::cast_slice(&[Uniform {
+                dimensions: [config.width as f32, config.height as f32],
+                _padding: [0.0, 0.0],
+            }]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST
+        });
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Uniform buffer bind group"),
+            layout: &bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding()
+            }],
+        });
+
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[],
+                bind_group_layouts: &[&bind_group_layout],
                 immediate_size: 0,
             });
 
@@ -213,15 +254,15 @@ impl AppState {
         let instances: &[InstanceInput] = &[
             points_to_instance_input([
                 glm::Vec2::new(-0.5, 0.25),
-                glm::Vec2::new(-0.5, 0.25),
-                glm::Vec2::new(-0.5, 0.25),
+                glm::Vec2::new(0.25, 0.25),
+                glm::Vec2::new(-0.5, -0.25),
                 glm::Vec2::new(0.25, -0.25),
             ]),
             points_to_instance_input([
                 glm::Vec2::new(-0.25, 0.25),
-                glm::Vec2::new(-0.25, 0.25),
-                glm::Vec2::new(-0.25, 0.25),
+                glm::Vec2::new(-0.25, 0.75),
                 glm::Vec2::new(0.25, 0.75),
+                glm::Vec2::new(0.25, 0.25),
             ]),
         ];
 
@@ -239,6 +280,8 @@ impl AppState {
             render_pipeline,
             vertex_buffer,
             instance_buffer,
+            uniform_buffer,
+            bind_group,
         }
     }
 
@@ -248,6 +291,11 @@ impl AppState {
             self.config.width = new_width;
             self.config.height = new_height;
             self.surface.configure(&self.device, &self.config);
+
+            self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[Uniform {
+                dimensions: [self.config.width as f32, self.config.height as f32],
+                _padding: [0.0, 0.0]
+            }]));
         }
     }
 
@@ -290,6 +338,7 @@ impl AppState {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+        render_pass.set_bind_group(0, &self.bind_group, &[]);
         render_pass.draw(0..(VERTICES.len() as u32), 0..2);
 
         drop(render_pass);
