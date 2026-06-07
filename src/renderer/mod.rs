@@ -31,8 +31,6 @@ impl RenderingState {
         let canvas_width = canvas.width();
         let canvas_height = canvas.height();
 
-        log::info!("Dimensions: {} {}", canvas_width, canvas_height);
-
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::GL,
             flags: Default::default(),
@@ -58,7 +56,6 @@ impl RenderingState {
             .request_device(&wgpu::DeviceDescriptor {
                 label: Some("Device"),
                 required_features: wgpu::Features::empty(),
-                // Use WebGL-compatible defaults instead of standard defaults
                 required_limits: wgpu::Limits::downlevel_webgl2_defaults(),
                 memory_hints: wgpu::MemoryHints::default(),
                 experimental_features: wgpu::ExperimentalFeatures::disabled(),
