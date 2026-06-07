@@ -79,9 +79,9 @@ fn points_to_instance_input(points: [glm::Vec2; 4]) -> InstanceInput {
     let height = max_y - min_y;
 
     InstanceInput {
-        matrix_col_0: [width, 0.0],
-        matrix_col_1: [0.0, height],
-        matrix_col_2: [mid_x * 2.0 - 1.0, -mid_y * 2.0 + 1.0],
+        matrix_col_0: [width * 0.5, 0.0],
+        matrix_col_1: [0.0, height * 0.5],
+        matrix_col_2: [mid_x, mid_y],
         p0: [points[0].x, points[0].y],
         p1: [points[1].x, points[1].y],
         p2: [points[2].x, points[2].y],
@@ -212,22 +212,16 @@ impl AppState {
 
         let instances: &[InstanceInput] = &[
             points_to_instance_input([
-                glm::Vec2::new(0.5, 0.0),
-                glm::Vec2::new(0.5, 0.0),
-                glm::Vec2::new(0.5, 0.0),
-                glm::Vec2::new(1.0, 0.5),
+                glm::Vec2::new(-0.5, 0.25),
+                glm::Vec2::new(-0.5, 0.25),
+                glm::Vec2::new(-0.5, 0.25),
+                glm::Vec2::new(0.25, -0.25),
             ]),
             points_to_instance_input([
-                glm::Vec2::new(0.375, 0.5),
-                glm::Vec2::new(0.5, 0.5),
-                glm::Vec2::new(0.5, 0.5),
-                glm::Vec2::new(0.5, 0.625),
-            ]),
-            points_to_instance_input([
-                glm::Vec2::new(0.5, 0.625),
-                glm::Vec2::new(0.5, 0.7),
-                glm::Vec2::new(0.5, 0.7),
-                glm::Vec2::new(0.75, 0.875),
+                glm::Vec2::new(-0.25, 0.25),
+                glm::Vec2::new(-0.25, 0.25),
+                glm::Vec2::new(-0.25, 0.25),
+                glm::Vec2::new(0.25, 0.75),
             ]),
         ];
 
@@ -296,7 +290,7 @@ impl AppState {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-        render_pass.draw(0..(VERTICES.len() as u32), 0..3);
+        render_pass.draw(0..(VERTICES.len() as u32), 0..2);
 
         drop(render_pass);
 
