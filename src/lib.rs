@@ -1,6 +1,7 @@
 use wasm_bindgen::prelude::*;
 
-mod state;
+pub mod state;
+pub mod renderer;
 
 #[wasm_bindgen(module = "/src/loop.js")]
 extern "C" {
