@@ -40,10 +40,11 @@ impl AppState {
 
     #[wasm_bindgen]
     pub fn frame(&mut self) {
-        let time = web_time::SystemTime::now()
-            .duration_since(self.start_time)
-            .unwrap()
-            .as_secs_f32();
+        let time = 1.0 as f32;
+        // web_time::SystemTime::now()
+        //     .duration_since(self.start_time)
+        //     .unwrap()
+        //     .as_secs_f32();
 
         self.beziers[0] = bezier::Bezier::new(
             glm::Vec2::new(-0.5 + time.cos() * 0.25, 0.25 + time.sin() * 0.125),

@@ -3,6 +3,7 @@ use wasm_bindgen::prelude::*;
 pub mod state;
 pub mod renderer;
 pub mod bezier;
+pub mod circle;
 
 #[wasm_bindgen(module = "/src/loop.js")]
 extern "C" {

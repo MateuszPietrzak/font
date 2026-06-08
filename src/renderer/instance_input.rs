@@ -1,3 +1,5 @@
+use crate::bezier;
+
 extern crate nalgebra_glm as glm;
 
 #[repr(C)]
@@ -34,7 +36,8 @@ impl InstanceInput {
     }
 }
 
-pub fn points_to_instance_input(points: [glm::Vec2; 4]) -> InstanceInput {
+pub fn bezier_to_instance_input(bezier: &bezier::Bezier) -> InstanceInput {
+    let points = [bezier.p0, bezier.p1, bezier.p2, bezier.p3];
     let min_x: f32 = points.iter().map(|p| p.x).reduce(f32::min).unwrap_or(-1.0);
     let min_y: f32 = points.iter().map(|p| p.y).reduce(f32::min).unwrap_or(-1.0);
     let max_x: f32 = points.iter().map(|p| p.x).reduce(f32::max).unwrap_or(1.0);
@@ -50,9 +53,9 @@ pub fn points_to_instance_input(points: [glm::Vec2; 4]) -> InstanceInput {
         matrix_col_0: [width * 0.5 + 0.05, 0.0],
         matrix_col_1: [0.0, height * 0.5 + 0.05],
         matrix_col_2: [mid_x, mid_y],
-        p0: [points[0].x, points[0].y],
-        p1: [points[1].x, points[1].y],
-        p2: [points[2].x, points[2].y],
-        p3: [points[3].x, points[3].y],
+        p0: [bezier.p0.x, bezier.p0.y],
+        p1: [bezier.p1.x, bezier.p1.y],
+        p2: [bezier.p2.x, bezier.p2.y],
+        p3: [bezier.p3.x, bezier.p3.y],
     }
 }

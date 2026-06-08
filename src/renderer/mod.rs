@@ -207,7 +207,7 @@ impl RenderingState {
 
     pub fn bezier(&mut self, bezier: &bezier::Bezier) {
         self.bezier_instance_inputs
-            .push(instance_input::points_to_instance_input(bezier.to_list()));
+            .push(instance_input::bezier_to_instance_input(bezier));
     }
 
     pub fn end_draw(&mut self) {
