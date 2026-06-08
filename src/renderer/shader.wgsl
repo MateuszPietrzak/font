@@ -90,10 +90,13 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let half_width= 0.005;
 
     let edge_blur = fwidth(dist);
-    let alpha = smoothstep(half_width + edge_blur, half_width - edge_blur, dist);
+    var alpha = smoothstep(half_width + edge_blur, half_width - edge_blur, dist);
     
+    // if (alpha == 0.0) {
+    //     discard;
+    // }
     if (alpha == 0.0) {
-        discard;
+        alpha = 0.1;
     }
 
     

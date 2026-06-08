@@ -6,6 +6,7 @@ extern crate nalgebra_glm as glm;
 pub struct AppState {
     renderer: renderer::RenderingState,
     beziers: Vec<bezier::Bezier>,
+    start_time: web_time::SystemTime,
 }
 
 #[wasm_bindgen]
@@ -28,6 +29,7 @@ impl AppState {
                     glm::Vec2::new(0.25, 0.25),
                 ),
             ],
+            start_time: web_time::SystemTime::now(),
         }
     }
 
@@ -38,6 +40,18 @@ impl AppState {
 
     #[wasm_bindgen]
     pub fn frame(&mut self) {
+        let time = web_time::SystemTime::now()
+            .duration_since(self.start_time)
+            .unwrap()
+            .as_secs_f32();
+
+        self.beziers[0] = bezier::Bezier::new(
+            glm::Vec2::new(-0.5 + time.cos() * 0.25, 0.25 + time.sin() * 0.125),
+            glm::Vec2::new(0.25, 0.25),
+            glm::Vec2::new(-0.5 + (time * 0.5).cos() * 0.25, -0.25 + (time * 0.5).sin() * 0.25),
+            glm::Vec2::new(0.25, -0.25),
+        );
+
         self.renderer.begin_draw();
 
         for bezier in &self.beziers {
