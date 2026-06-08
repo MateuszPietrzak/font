@@ -7,7 +7,7 @@ pub struct Vertex {
 }
 
 #[rustfmt::skip]
-pub const VERTICES: &[Vertex] = &[
+pub const QUAD: &[Vertex] = &[
     Vertex { position: [-1.0, 1.0] },
     Vertex { position: [1.0, 1.0] },
     Vertex { position: [-1.0, -1.0] },

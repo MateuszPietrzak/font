@@ -4,7 +4,7 @@ extern crate nalgebra_glm as glm;
 
 #[wasm_bindgen]
 pub struct AppState {
-    renderer: renderer::RenderingState,
+    renderer: renderer::Renderer,
     beziers: Vec<bezier::Bezier>,
     start_time: web_time::SystemTime,
 }
@@ -14,7 +14,7 @@ impl AppState {
     #[wasm_bindgen]
     pub async fn new_with_init() -> AppState {
         Self {
-            renderer: renderer::RenderingState::new().await,
+            renderer: renderer::Renderer::new().await,
             beziers: vec![
                 bezier::Bezier::new(
                     glm::Vec2::new(-0.5, 0.25),
