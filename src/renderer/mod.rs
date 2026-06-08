@@ -1,5 +1,7 @@
 use wasm_bindgen::prelude::*;
 use wgpu::util::DeviceExt;
+
+use crate::bezier;
 extern crate nalgebra_glm as glm;
 
 mod instance_input;
@@ -16,6 +18,8 @@ pub struct RenderingState {
     instance_buffer: wgpu::Buffer,
     uniform_buffer: wgpu::Buffer,
     bind_group: wgpu::BindGroup,
+    bezier_instance_inputs: Vec<instance_input::InstanceInput>,
+    bezier_capacity: u32,
 }
 
 impl RenderingState {
@@ -158,25 +162,11 @@ impl RenderingState {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        let instances: &[instance_input::InstanceInput] = &[
-            instance_input::points_to_instance_input([
-                glm::Vec2::new(-0.5, 0.25),
-                glm::Vec2::new(0.25, 0.25),
-                glm::Vec2::new(-0.5, -0.25),
-                glm::Vec2::new(0.25, -0.25),
-            ]),
-            instance_input::points_to_instance_input([
-                glm::Vec2::new(-0.25, 0.25),
-                glm::Vec2::new(-0.25, 0.75),
-                glm::Vec2::new(0.25, 0.75),
-                glm::Vec2::new(0.25, 0.25),
-            ]),
-        ];
-
-        let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let instance_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Instance buffer"),
-            contents: bytemuck::cast_slice(instances),
-            usage: wgpu::BufferUsages::VERTEX,
+            size: (std::mem::size_of::<instance_input::InstanceInput>() * 4) as u64,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
 
         Self {
@@ -189,6 +179,8 @@ impl RenderingState {
             instance_buffer,
             uniform_buffer,
             bind_group,
+            bezier_instance_inputs: Vec::new(),
+            bezier_capacity: 4,
         }
     }
 
@@ -209,9 +201,25 @@ impl RenderingState {
         }
     }
 
-    pub fn update(&mut self) {}
+    pub fn begin_draw(&mut self) {
+        self.bezier_instance_inputs.clear();
+    }
 
-    pub fn render(&self) {
+    pub fn bezier(&mut self, bezier: &bezier::Bezier) {
+        self.bezier_instance_inputs
+            .push(instance_input::points_to_instance_input(bezier.to_list()));
+    }
+
+    pub fn end_draw(&mut self) {
+        self.queue.write_buffer(
+            &self.instance_buffer,
+            0,
+            &bytemuck::cast_slice(&self.bezier_instance_inputs),
+        );
+        self.render();
+    }
+
+    fn render(&self) {
         let output = self.surface.get_current_texture().unwrap();
 
         let view = output
@@ -250,7 +258,10 @@ impl RenderingState {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
         render_pass.set_bind_group(0, &self.bind_group, &[]);
-        render_pass.draw(0..(vertex::VERTICES.len() as u32), 0..2);
+        render_pass.draw(
+            0..(vertex::VERTICES.len() as u32),
+            0..(self.bezier_instance_inputs.len() as u32),
+        );
 
         drop(render_pass);
 

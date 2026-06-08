@@ -1,10 +1,11 @@
+use crate::{bezier, renderer};
 use wasm_bindgen::prelude::*;
-
-use crate::renderer;
+extern crate nalgebra_glm as glm;
 
 #[wasm_bindgen]
 pub struct AppState {
     renderer: renderer::RenderingState,
+    beziers: Vec<bezier::Bezier>,
 }
 
 #[wasm_bindgen]
@@ -13,6 +14,20 @@ impl AppState {
     pub async fn new_with_init() -> AppState {
         Self {
             renderer: renderer::RenderingState::new().await,
+            beziers: vec![
+                bezier::Bezier::new(
+                    glm::Vec2::new(-0.5, 0.25),
+                    glm::Vec2::new(0.25, 0.25),
+                    glm::Vec2::new(-0.5, -0.25),
+                    glm::Vec2::new(0.25, -0.25),
+                ),
+                bezier::Bezier::new(
+                    glm::Vec2::new(-0.25, 0.25),
+                    glm::Vec2::new(-0.25, 0.75),
+                    glm::Vec2::new(0.25, 0.75),
+                    glm::Vec2::new(0.25, 0.25),
+                ),
+            ],
         }
     }
 
@@ -22,12 +37,13 @@ impl AppState {
     }
 
     #[wasm_bindgen]
-    pub fn update(&mut self) {
-        self.renderer.update();
-    }
+    pub fn frame(&mut self) {
+        self.renderer.begin_draw();
 
-    #[wasm_bindgen]
-    pub fn render(&self) {
-        self.renderer.render();
+        for bezier in &self.beziers {
+            self.renderer.bezier(bezier);
+        }
+
+        self.renderer.end_draw();
     }
 }

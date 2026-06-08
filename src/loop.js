@@ -16,8 +16,7 @@ export function run_js_loop(state) {
     resizeCanvas();
 
     function loop() {
-        state.update();
-        state.render();
+        state.frame();
         requestAnimationFrame(loop);
     }
     loop();
